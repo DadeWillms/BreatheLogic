@@ -1,0 +1,71 @@
+#include <Wire.h>
+#include <SensirionI2cScd4x.h>
+
+SensirionI2cScd4x scd4x;
+
+static const uint8_t SCD4X_I2C_ADDR = 0x62;  // default SCD4x I2C address
+
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+  // ESP32 default I2C pins: SDA=21, SCL=22
+  Wire.begin(21, 22);
+
+  Serial.println("SCD4x demo starting...");
+
+  // Your library requires 2 args: (Wire, address)
+  scd4x.begin(Wire, SCD4X_I2C_ADDR);
+
+  // Safe to call
+  scd4x.stopPeriodicMeasurement();
+  delay(500);
+
+  uint16_t error = scd4x.startPeriodicMeasurement();
+  if (error) {
+    Serial.print("Error starting measurement: ");
+    Serial.println(error);
+    while (1) delay(100);
+  }
+
+  Serial.println("Measurement started. Waiting for data...");
+}
+
+void loop() {
+  uint16_t error;
+
+  bool dataReady = false;  // MUST be bool for your library
+  error = scd4x.getDataReadyStatus(dataReady);
+  if (error) {
+    Serial.print("Error checking data-ready status: ");
+    Serial.println(error);
+    delay(1000);
+    return;
+  }
+
+  if (!dataReady) {
+    delay(1000);
+    return;
+  }
+
+  uint16_t co2 = 0;
+  float temperature = 0.0f; // MUST be float for your library
+  float humidity = 0.0f;    // MUST be float for your library
+
+  error = scd4x.readMeasurement(co2, temperature, humidity);
+  if (error) {
+    Serial.print("Error reading measurement: ");
+    Serial.println(error);
+    delay(1000);
+    return;
+  }
+
+  Serial.print("CO2 (ppm): ");
+  Serial.print(co2);
+  Serial.print(" | Temp (C): ");
+  Serial.print(temperature, 2);
+  Serial.print(" | RH (%): ");
+  Serial.println(humidity, 2);
+
+  delay(5000);
+}
